@@ -1,0 +1,42 @@
+.App {
+  text-align: center;
+  font-family: sans-serif;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  margin-bottom: 2rem;
+}
+
+select, button {
+  padding: 10px 15px;
+  margin: 0 10px;
+  font-size: 16px;
+  border-radius: 5px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.result-container {
+  margin: 2rem auto;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-width: 500px;
+  text-align: left;
+}
+
+.risk-score {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 1rem 0;
+}
+
+.details {
+  margin-top: 1rem;
+}
