@@ -2,10 +2,15 @@
 
 A full-stack AI-powered merchant risk intelligence platform built under a 12-hour constraint. This application demonstrates the ability to create a functional MVP that predicts merchant risk scores using machine learning.
 
+
 https://img.shields.io/badge/Python-3.9%252B-blue
+
 https://img.shields.io/badge/FastAPI-0.104.1-green
+
 https://img.shields.io/badge/React-18.2.0-blue
+
 https://img.shields.io/badge/PostgreSQL-13-blue
+
 https://img.shields.io/badge/Docker-Compose-blue
 
 🎯 Problem Statement
@@ -157,4 +162,5 @@ This project was built under extreme time constraints as a demonstration of rapi
 
 📄 License
 This project is created for demonstration purposes as part of a technical assessment.
+
 
