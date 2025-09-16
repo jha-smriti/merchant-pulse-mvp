@@ -1,0 +1,6 @@
+/* Import Navigation styles since they include shared styles */
+@import url('./Navigation.css');
+
+.dashboard {
+  /* Styles already defined in Navigation.css */
+}
