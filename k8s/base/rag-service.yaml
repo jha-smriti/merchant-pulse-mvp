@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-service
+  namespace: merchant-pulse
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-service
+  template:
+    metadata:
+      labels:
+        app: rag-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: rag-service
+        image: ghcr.io/jha-smriti/merchant-pulse-mvp-rag-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: CHROMA_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: CHROMA_URL
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: OPENAI_API_KEY
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        volumeMounts:
+        - name: chroma-storage
+          mountPath: /app/chroma_db
+      volumes:
+      - name: chroma-storage
+        persistentVolumeClaim:
+          claimName: chroma-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chroma-pvc
+  namespace: merchant-pulse
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-service
+  namespace: merchant-pulse
+spec:
+  selector:
+    app: rag-service
+  ports:
+  - port: 8000
+    targetPort: 8000
