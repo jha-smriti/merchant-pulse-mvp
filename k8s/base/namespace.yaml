@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: merchant-pulse
+  labels:
+    app: merchant-pulse
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: merchant-pulse
+data:
+  DATABASE_URL: "postgresql://merchant_user:merchant_pass@postgres:5432/merchant_pulse"
+  REDIS_URL: "redis://redis:6379"
+  CHROMA_URL: "http://chromadb:8000"
+  LOG_LEVEL: "INFO"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: merchant-pulse
+type: Opaque
+stringData:
+  OPENAI_API_KEY: ""  # To be set in overlays
+  DATABASE_PASSWORD: "merchant_pass"
+  JWT_SECRET: "your-jwt-secret-key"

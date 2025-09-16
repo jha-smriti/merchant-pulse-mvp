@@ -1,0 +1,138 @@
+_format_version: "3.0"
+
+services:
+  - name: backend-service
+    url: http://backend:8000
+    tags:
+      - backend
+    routes:
+      - name: backend-route
+        paths:
+          - /api/v1
+        strip_path: true
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 1000
+      - name: cors
+        config:
+          origins:
+            - http://localhost:3000
+            - https://merchant-pulse.example.com
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Accept
+            - Accept-Version
+            - Content-Length
+            - Content-MD5
+            - Content-Type
+            - Date
+            - Authorization
+          credentials: true
+      - name: prometheus
+        config:
+          per_consumer: true
+
+  - name: ml-service
+    url: http://ml-service:8000
+    tags:
+      - ml
+    routes:
+      - name: ml-route
+        paths:
+          - /api/ml
+        strip_path: true
+        methods:
+          - GET
+          - POST
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 50
+          hour: 500
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 1000000  # 1MB
+      - name: prometheus
+        config:
+          per_consumer: true
+
+  - name: rag-service
+    url: http://rag-service:8000
+    tags:
+      - ai
+    routes:
+      - name: rag-route
+        paths:
+          - /api/ai
+        strip_path: true
+        methods:
+          - GET
+          - POST
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 30
+          hour: 300
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 2000000  # 2MB
+      - name: prometheus
+        config:
+          per_consumer: true
+
+consumers:
+  - username: frontend-app
+    custom_id: frontend-app
+    tags:
+      - application
+    keyauth_credentials:
+      - key: frontend-api-key
+
+  - username: admin-user
+    custom_id: admin-user
+    tags:
+      - admin
+    keyauth_credentials:
+      - key: admin-api-key
+
+plugins:
+  - name: key-auth
+    config:
+      key_names:
+        - apikey
+      key_in_header: true
+      key_in_query: true
+
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - "X-Gateway-Version:1.0"
+          - "X-Request-ID:$(uuid)"
+
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - "X-Response-Time:$(latency)"
+
+  - name: file-log
+    config:
+      path: /tmp/access.log
+
+  - name: zipkin
+    config:
+      http_endpoint: http://zipkin:9411/api/v2/spans
+      sample_ratio: 0.1

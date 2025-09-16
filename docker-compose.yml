@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: merchant_pulse
+      POSTGRES_USER: merchant_user
+      POSTGRES_PASSWORD: merchant_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - merchant-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U merchant_user -d merchant_pulse"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - merchant-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Vector Database for RAG
+  chromadb:
+    image: chromadb/chroma:latest
+    environment:
+      - CHROMA_DB_IMPL=clickhouse
+    volumes:
+      - chromadb_data:/chroma/chroma
+    ports:
+      - "8001:8000"
+    networks:
+      - merchant-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://merchant_user:merchant_pass@postgres:5432/merchant_pulse
+      - REDIS_URL=redis://redis:6379
+      - CHROMA_URL=http://chromadb:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    networks:
+      - merchant-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - merchant-network
+
+  # ML Model Service (Microservice)
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml-service/Dockerfile
+    environment:
+      - MODEL_PATH=/app/models
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8002:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - merchant-network
+    volumes:
+      - model_data:/app/models
+
+  # RAG Service (Microservice)
+  rag-service:
+    build:
+      context: .
+      dockerfile: rag-service/Dockerfile
+    environment:
+      - CHROMA_URL=http://chromadb:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    ports:
+      - "8003:8000"
+    depends_on:
+      - chromadb
+    networks:
+      - merchant-network
+
+  # API Gateway (Kong)
+  kong:
+    image: kong:3.4-alpine
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong/kong.yml:/kong/declarative/kong.yml
+    ports:
+      - "8080:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+    networks:
+      - merchant-network
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - merchant-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-dashboards:/var/lib/grafana/dashboards
+    networks:
+      - merchant-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  chromadb_data:
+  model_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  merchant-network:
+    driver: bridge

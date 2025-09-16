@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  template:
+    spec:
+      containers:
+      - name: backend
+        env:
+        - name: ENVIRONMENT
+          value: "development"
+        - name: DEBUG
+          value: "true"
+        - name: ML_SERVICE_URL
+          value: "http://dev-ml-service:8000"
+        - name: RAG_SERVICE_URL
+          value: "http://dev-rag-service:8000"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi

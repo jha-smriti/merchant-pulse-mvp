@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: merchant-pulse-dev
+
+namePrefix: dev-
+
+resources:
+  - ../../base
+
+patchesStrategicMerge:
+  - deployment-patch.yaml
+  - configmap-patch.yaml
+
+images:
+  - name: ghcr.io/jha-smriti/merchant-pulse-mvp-backend
+    newTag: dev
+  - name: ghcr.io/jha-smriti/merchant-pulse-mvp-frontend
+    newTag: dev
+  - name: ghcr.io/jha-smriti/merchant-pulse-mvp-ml-service
+    newTag: dev
+  - name: ghcr.io/jha-smriti/merchant-pulse-mvp-rag-service
+    newTag: dev
+
+replicas:
+  - name: backend
+    count: 1
+  - name: frontend
+    count: 1
+  - name: ml-service
+    count: 1
+  - name: rag-service
+    count: 1
